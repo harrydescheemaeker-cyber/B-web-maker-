@@ -47,9 +47,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
 <script>
     // VERVANG DEZE MET JOUW SUPABASE GEGEVENS
-    const SUPABASE_URL = 'JOUW_SUPABASE_URL';
-    const SUPABASE_KEY = 'JOUW_SUPABASE_KEY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
+   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editor;
 
