@@ -4,42 +4,99 @@
     <meta charset="UTF-8">
     <title>AI Code Studio</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/editor/editor.main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/editor/editor.main.css">
     <style>
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: white; overflow: hidden; }
-        nav { background: #2d2d2d; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; }
-        #main { display: flex; flex: 1; overflow: hidden; }
-        #editor { width: 50%; height: 100%; border-right: 1px solid #444; }
+        body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1e1e1e; color: white; }
+        nav { background: #333; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        #main { display: flex; flex: 1; }
+        #editor { width: 50%; height: 100%; }
         #preview-box { width: 50%; background: white; }
         iframe { width: 100%; height: 100%; border: none; }
-        button { cursor: pointer; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
-        .btn-ai { background: #8e44ad; color: white; margin-right: 10px; }
-        .btn-save { background: #27ae60; color: white; }
-        button:hover { opacity: 0.8; }
         #auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .auth-form { background: #252526; padding: 40px; border-radius: 12px; text-align: center; border: 1px solid #444; }
-        input { padding: 12px; margin: 8px; width: 250px; border-radius: 4px; border: 1px solid #444; background: #3c3c3c; color: white; }
+        .auth-form { background: #222; padding: 30px; border-radius: 8px; text-align: center; border: 1px solid #444; }
+        input { padding: 10px; margin: 5px; width: 220px; background: #333; color: white; border: 1px solid #555; }
+        button { cursor: pointer; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; margin: 5px; }
+        .btn-primary { background: #007acc; color: white; }
+        .btn-save { background: #27ae60; color: white; }
     </style>
+
+    <script>
+        // 1. Instellingen
+        const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
+        
+        let sb;
+        let editor;
+
+        // 2. Functies (Bovenaan laden zodat ze 'defined' zijn)
+        window.onload = function() {
+            sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            checkUrlForProject();
+        };
+
+        async function signUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await sb.auth.signUp({ email, password });
+            if (error) alert("Fout: " + error.message); 
+            else alert("Account aangemaakt! Je kunt nu inloggen.");
+        }
+
+        async function signIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) alert("Inloggen mislukt: " + error.message); 
+            else {
+                document.getElementById('auth-overlay').style.display = 'none';
+                if(editor) updatePreview();
+            }
+        }
+
+        async function saveProject() {
+            const { data: { user } } = await sb.auth.getUser();
+            if(!user) return alert("Log eerst in!");
+
+            const code = editor.getValue();
+            const { data, error } = await sb.from('projecten').insert([{ html_code: code, user_id: user.id }]).select();
+
+            if (error) alert("Opslaan mislukt. Heb je de SQL code in Supabase gerund? " + error.message);
+            else {
+                const link = window.location.origin + window.location.pathname + "?id=" + data[0].id;
+                alert("✅ Website Gepubliceerd!\n\nDeel deze link:\n" + link);
+            }
+        }
+
+        function updatePreview() {
+            const code = editor.getValue();
+            document.getElementById('preview').srcdoc = code;
+        }
+
+        async function checkUrlForProject() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            if (id && sb) {
+                const { data } = await sb.from('projecten').select('html_code').eq('id', id).single();
+                if (data && editor) editor.setValue(data.html_code);
+            }
+        }
+    </script>
 </head>
 <body>
 
 <div id="auth-overlay">
     <div class="auth-form">
-        <h2>Welkom bij Code Studio</h2>
-        <p>Maak een gratis account om je code op te slaan.</p>
+        <h2>Code Studio Login</h2>
         <input type="email" id="email" placeholder="E-mail"><br>
-        <input type="password" id="password" placeholder="Wachtwoord (min. 6 tekens)"><br><br>
-        <button onclick="signUp()" style="background: #444; color: white;">Account maken</button>
-        <button onclick="signIn()" style="background: #007acc; color: white;">Inloggen</button>
+        <input type="password" id="password" placeholder="Wachtwoord"><br><br>
+        <button class="btn-primary" onclick="signUp()">Account maken</button>
+        <button class="btn-primary" style="background:#555" onclick="signIn()">Inloggen</button>
     </div>
 </div>
 
 <nav>
-    <div><strong>🚀 AI Code Studio</strong> | <span id="cur-name">Nieuw Project</span></div>
-    <div>
-        <button class="btn-ai" onclick="vraagGemini()">✨ AI Tip</button>
-        <button class="btn-save" onclick="saveProject()">Opslaan & Deel</button>
-    </div>
+    <div><strong>🚀 AI Studio</strong></div>
+    <button class="btn-save" onclick="saveProject()">Opslaan & Publiceren</button>
 </nav>
 
 <div id="main">
@@ -48,24 +105,19 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
-
 <script>
-    // 1. SUPABASE CONFIGURATIE
-    const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        editor = monaco.editor.create(document.getElementById('editor'), {
+            value: "<h1>Welkom</h1>\n<p>Maak hier je website...</p>",
+            language: 'html',
+            theme: 'vs-dark',
+            automaticLayout: true
+        });
+        editor.onDidChangeModelContent(updatePreview);
+        updatePreview();
+    });
+</script>
 
-    let editor;
-
-    // 2. AUTHENTICATIE
-    async function signUp() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const { error } = await sb.auth.signUp({ email, password });
-        if (error) alert("Fout: " + error.message); 
-        else alert("Account aangemaakt! Je kunt nu direct inloggen.");
-    }
-
-    async function signIn() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password
+</body>
+</html>
