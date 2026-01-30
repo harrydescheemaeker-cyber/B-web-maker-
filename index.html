@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Code Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/editor/editor.main.css">
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: white; }
+        nav { background: #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+        #main { display: flex; flex: 1; }
+        #editor { width: 50%; height: 100%; }
+        #preview-box { width: 50%; background: white; }
+        iframe { width: 100%; height: 100%; border: none; }
+        button { cursor: pointer; padding: 8px 15px; border: none; border-radius: 4px; margin-left: 5px; }
+        .btn-ai { background: #8e44ad; color: white; }
+        .btn-save { background: #27ae60; color: white; }
+        #auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .auth-form { background: #222; padding: 30px; border-radius: 8px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div id="auth-overlay">
+    <div class="auth-form">
+        <h2>Inloggen bij Code Studio</h2>
+        <input type="email" id="email" placeholder="E-mail"><br><br>
+        <input type="password" id="password" placeholder="Wachtwoord"><br><br>
+        <button onclick="signUp()">Account maken</button>
+        <button onclick="signIn()">Inloggen</button>
+    </div>
+</div>
+
+<nav>
+    <div><strong>AI Code Studio</strong> | Project: <span id="cur-name">Nieuw</span></div>
+    <div>
+        <button class="btn-ai" onclick="vraagGemini()">✨ Gemini AI</button>
+        <button class="btn-save" onclick="saveProject()">Opslaan & Deel</button>
+    </div>
+</nav>
+
+<div id="main">
+    <div id="editor"></div>
+    <div id="preview-box"><iframe id="preview"></iframe></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
+<script>
+    // VERVANG DEZE MET JOUW SUPABASE GEGEVENS
+    const SUPABASE_URL = 'JOUW_SUPABASE_URL';
+    const SUPABASE_KEY = 'JOUW_SUPABASE_KEY';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let editor;
+
+    // 1. Authenticatie Functies
+    async function signUp() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) alert(error.message); else alert("Check je mail voor verificatie!");
+    }
+
+    async function signIn() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) alert(error.message); else document.getElementById('auth-overlay').style.display = 'none';
+    }
+
+    // 2. De Editor Laden (VS Code motor)
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        editor = monaco.editor.create(document.getElementById('editor'), {
+            value: "<h1>Hallo Wereld</h1>\n<p>Begin hier met typen...</p>",
+            language: 'html',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            suggestOnTriggerCharacters: true // Voor de h1 tips
+        });
+
+        editor.onDidChangeModelContent(() => updatePreview());
+        updatePreview();
+    });
+
+    function updatePreview() {
+        const code = editor.getValue();
+        const frame = document.getElementById('preview');
+        frame.srcdoc = code;
+    }
+
+    // 3. Opslaan & AI
+    async function saveProject() {
+        const user = (await supabase.auth.getUser()).data.user;
+        if(!user) return alert("Log eerst in!");
+
+        const { data, error } = await supabase.from('projecten').insert([
+            { naam: 'Mijn Project', html_code: editor.getValue(), user_id: user.id }
+        ]);
+        if (error) alert("Fout: " + error.message); else alert("Project opgeslagen! Deel de URL van deze site met je vrienden.");
+    }
+
+    function vraagGemini() {
+        const code = editor.getValue();
+        alert("Gemini tip: Gebruik <style> tags bovenin om je tekst kleur te geven!");
+        // Hier kun je later de Gemini API Key koppelen
+    }
+</script>
+</body>
+</html>
