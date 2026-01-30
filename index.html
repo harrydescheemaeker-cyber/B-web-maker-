@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/editor/editor.main.css">
     
     <style>
-        :root { --bg: #1e1e1e; --nav: #2d2d2d; --accent: #007acc; --green: #27ae60; }
+        :root { --bg: #1e1e1e; --nav: #2d2d2d; --accent: #007acc; --green: #27ae60; --purple: #8e44ad; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; background: var(--bg); color: white; overflow: hidden; }
         #auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
         .auth-box { background: #252526; padding: 40px; border-radius: 12px; border: 1px solid #444; text-align: center; }
@@ -19,16 +19,16 @@
         #editor { width: 50%; height: 100%; border-right: 1px solid #444; }
         #preview-box { width: 50%; background: white; }
         iframe { width: 100%; height: 100%; border: none; }
-        input { padding: 12px; margin: 10px 0; background: #3c3c3c; border: 1px solid #555; color: white; border-radius: 4px; width: 250px; }
+        input { padding: 12px; margin: 10px 0; background: #3c3c3c; border: 1px solid #555; color: white; border-radius: 4px; width: 280px; }
         button { cursor: pointer; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; }
         .btn-blue { background: var(--accent); color: white; }
         .btn-green { background: var(--green); color: white; }
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 500; }
-        .modal-content { background: #252526; padding: 30px; border-radius: 10px; width: 450px; text-align: center; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 500; }
+        .modal-content { background: #252526; padding: 30px; border-radius: 10px; width: 500px; text-align: left; }
+        .url-box { background: #111; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid #444; font-family: monospace; font-size: 12px; word-break: break-all; cursor: pointer; }
     </style>
 
     <script>
-        // JOUW SUPABASE GEGEVENS
         const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
         
@@ -36,19 +36,26 @@
         let editor;
         let huidigProjectID = null;
 
-        // Initializeer verbinding zodra de pagina start
         window.onload = async () => {
             sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            // Check of iemand een gedeelde website bekijkt (?view=...)
             const params = new URLSearchParams(window.location.search);
-            const viewId = params.get('view');
-            if (viewId) {
-                const { data } = await sb.from('projecten').select('html_code').eq('id', viewId).single();
-                if (data) {
-                    document.open();
-                    document.write(data.html_code);
-                    document.close();
+            
+            // OPTIE 1: Publiceer Modus (Alleen website)
+            if (params.get('view')) {
+                const { data } = await sb.from('projecten').select('html_code').eq('id', params.get('view')).single();
+                if (data) { document.open(); document.write(data.html_code); document.close(); return; }
+            }
+            // OPTIE 2: Samenwerk Modus (Editor openen met code)
+            if (params.get('edit')) {
+                document.getElementById('auth-overlay').style.display = 'none';
+                document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('editor-nav').style.display = 'flex';
+                document.getElementById('main').style.display = 'flex';
+                huidigProjectID = params.get('edit');
+                const { data } = await sb.from('projecten').select('*').eq('id', huidigProjectID).single();
+                if (data && editor) { 
+                    editor.setValue(data.html_code);
+                    document.getElementById('actieve-titel').innerText = data.naam || "Gedeeld Project";
                 }
             }
         };
@@ -86,29 +93,23 @@
         }
 
         function nieuwProject() {
-            const naam = prompt("Projectnaam:");
+            const naam = prompt("Geef je website een naam:");
             if (!naam) return;
             huidigProjectID = null;
             document.getElementById('actieve-titel').innerText = naam;
-            toonEditor();
-            if(editor) editor.setValue(`<h1>${naam}</h1>\n<p>Welkom op mijn site!</p>`);
+            document.getElementById('home-screen').style.display = 'none';
+            document.getElementById('editor-nav').style.display = 'flex';
+            document.getElementById('main').style.display = 'flex';
+            if(editor) editor.setValue(`<h1>${naam}</h1>\n<p>Welkom op mijn nieuwe site!</p>`);
         }
 
         function openProject(p) {
             huidigProjectID = p.id;
             document.getElementById('actieve-titel').innerText = p.naam || "Project";
-            toonEditor();
-            if(editor) editor.setValue(p.html_code);
-        }
-
-        function toonEditor() {
             document.getElementById('home-screen').style.display = 'none';
             document.getElementById('editor-nav').style.display = 'flex';
             document.getElementById('main').style.display = 'flex';
-        }
-
-        function gaNaarHome() {
-            location.reload(); // De makkelijkste manier om terug naar start te gaan
+            if(editor) editor.setValue(p.html_code);
         }
 
         async function saveProject() {
@@ -123,11 +124,13 @@
                 res = await sb.from('projecten').insert([{ html_code: code, user_id: user.id, naam: naam }]).select();
             }
 
-            if (res.error) alert("Fout: " + res.error.message);
-            else {
+            if (res.error) {
+                alert("Opslaan mislukt. Run de SQL code in Supabase om de 'naam' kolom toe te voegen!");
+            } else {
                 huidigProjectID = res.data[0].id;
-                const link = window.location.origin + window.location.pathname + "?view=" + huidigProjectID;
-                document.getElementById('share-url').value = link;
+                const base = window.location.origin + window.location.pathname;
+                document.getElementById('publiceer-url').innerText = base + "?view=" + huidigProjectID;
+                document.getElementById('samenwerk-url').innerText = base + "?edit=" + huidigProjectID;
                 document.getElementById('share-modal').style.display = 'flex';
             }
         }
@@ -141,7 +144,7 @@
         <input type="email" id="email" placeholder="E-mail"><br>
         <input type="password" id="password" placeholder="Wachtwoord"><br>
         <button class="btn-blue" onclick="signIn()">Inloggen</button><br>
-        <button onclick="signUp()" style="background:none; color:#aaa; margin-top:10px;">Nieuw? Account maken</button>
+        <button onclick="signUp()" style="background:none; color:#aaa; margin-top:10px;">Account maken</button>
     </div>
 </div>
 
@@ -154,8 +157,8 @@
 </div>
 
 <nav id="editor-nav" style="display:none">
-    <div><button onclick="gaNaarHome()" style="background:none; color:#ccc; border:1px solid #444">< Home</button> <strong id="actieve-titel" style="margin-left:15px;"></strong></div>
-    <button class="btn-green" onclick="saveProject()">Opslaan & Publiceren</button>
+    <div><button onclick="location.reload()" style="background:#444; color:white">< Home</button> <strong id="actieve-titel" style="margin-left:15px;"></strong></div>
+    <button class="btn-green" onclick="saveProject()">Opslaan & Delen</button>
 </nav>
 
 <div id="main" style="display:none">
@@ -165,10 +168,15 @@
 
 <div id="share-modal" class="modal">
     <div class="modal-content">
-        <h3>Website is Live! 🚀</h3>
-        <input type="text" id="share-url" readonly style="width:100%" onclick="this.select()">
-        <p>Deel deze link met iedereen!</p>
-        <button class="btn-blue" onclick="document.getElementById('share-modal').style.display='none'">Sluiten</button>
+        <h2>Kies je link 🚀</h2>
+        
+        <p><strong>1. Live Website (Alleen kijken)</strong></p>
+        <div class="url-box" id="publiceer-url" onclick="navigator.clipboard.writeText(this.innerText); alert('Gekopieerd!')"></div>
+        
+        <p><strong>2. Samenwerken (Code bewerken)</strong></p>
+        <div class="url-box" id="samenwerk-url" onclick="navigator.clipboard.writeText(this.innerText); alert('Gekopieerd!')"></div>
+        
+        <button class="btn-blue" onclick="document.getElementById('share-modal').style.display='none'" style="width:100%">Sluiten</button>
     </div>
 </div>
 
