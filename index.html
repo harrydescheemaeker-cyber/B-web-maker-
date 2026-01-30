@@ -2,49 +2,70 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>AI Code Studio - Home</title>
+    <title>AI Code Studio Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/editor/editor.main.css">
     <style>
-        :root { --bg: #1e1e1e; --nav: #2d2d2d; --accent: #007acc; }
+        :root { --bg: #1e1e1e; --nav: #2d2d2d; --accent: #007acc; --green: #27ae60; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; height: 100vh; background: var(--bg); color: white; overflow: hidden; }
         
-        /* Home Screen Style */
-        #home-screen { position: fixed; inset: 0; background: var(--bg); z-index: 200; padding: 40px; overflow-y: auto; }
-        .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
-        .project-card { background: var(--nav); padding: 20px; border-radius: 8px; border: 1px solid #444; cursor: pointer; text-align: center; }
-        .project-card:hover { border-color: var(--accent); }
+        /* Auth Overlay */
+        #auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .auth-box { background: #252526; padding: 40px; border-radius: 12px; border: 1px solid #444; text-align: center; }
 
-        /* Editor Style */
+        /* Home Screen */
+        #home-screen { position: fixed; inset: 0; background: var(--bg); z-index: 200; padding: 40px; overflow-y: auto; display: none; }
+        .project-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
+        .project-card { background: var(--nav); padding: 20px; border-radius: 10px; border: 1px solid #444; cursor: pointer; transition: 0.2s; position: relative; }
+        .project-card:hover { border-color: var(--accent); transform: translateY(-5px); }
+        .project-card h3 { margin: 0 0 10px 0; color: var(--accent); }
+
+        /* Editor */
         nav { background: var(--nav); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; }
         #main { display: flex; flex: 1; height: calc(100vh - 60px); }
-        #editor { width: 50%; height: 100%; }
+        #editor { width: 50%; height: 100%; border-right: 1px solid #444; }
         #preview-box { width: 50%; background: white; }
         iframe { width: 100%; height: 100%; border: none; }
 
-        /* Popups */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 300; }
-        .modal-content { background: #252526; padding: 25px; border-radius: 8px; width: 400px; text-align: center; }
-        input { width: 80%; padding: 10px; margin: 10px 0; background: #3c3c3c; border: 1px solid #555; color: white; }
-        button { cursor: pointer; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; margin: 5px; }
+        /* Inputs & Buttons */
+        input { padding: 12px; margin: 10px 0; background: #3c3c3c; border: 1px solid #555; color: white; border-radius: 4px; width: 250px; }
+        button { cursor: pointer; padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; }
         .btn-blue { background: var(--accent); color: white; }
-        .btn-green { background: #27ae60; color: white; }
+        .btn-green { background: var(--green); color: white; }
+        
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 500; }
+        .modal-content { background: #252526; padding: 30px; border-radius: 10px; width: 450px; text-align: center; }
     </style>
 </head>
 <body>
 
+<div id="auth-overlay">
+    <div class="auth-box">
+        <h2>🚀 AI Code Studio</h2>
+        <p>Log in om je projecten te beheren</p>
+        <input type="email" id="email" placeholder="E-mail"><br>
+        <input type="password" id="password" placeholder="Wachtwoord"><br>
+        <button class="btn-blue" onclick="signIn()">Inloggen</button>
+        <button onclick="signUp()" style="background:none; color:#aaa;">Account aanmaken</button>
+    </div>
+</div>
+
 <div id="home-screen">
-    <h1>Mijn Projecten</h1>
-    <button class="btn-blue" onclick="nieuwProject()">+ Nieuw Project</button>
-    <div id="project-lijst" class="project-grid">
-        </div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Mijn Projecten</h1>
+        <button class="btn-blue" onclick="nieuwProject()">+ Nieuw Project</button>
+    </div>
+    <div id="project-lijst" class="project-grid"></div>
 </div>
 
 <nav id="editor-nav" style="display:none">
-    <div><button onclick="gaNaarHome()" style="background:none; color:#ccc">< Terug</button> | <strong id="project-titel">Naamloos</strong></div>
+    <div>
+        <button onclick="gaNaarHome()" style="background:none; color:#ccc; border:1px solid #444">< Terug</button>
+        <strong id="actieve-titel" style="margin-left:15px;">Naamloos Project</strong>
+    </div>
     <div>
         <button onclick="vraagAI()" style="background:#8e44ad; color:white">✨ AI Tip</button>
-        <button class="btn-green" onclick="saveProject()">Opslaan & Deel</button>
+        <button class="btn-green" onclick="saveProject()">Opslaan & Publiceren</button>
     </div>
 </nav>
 
@@ -55,10 +76,10 @@
 
 <div id="share-modal" class="modal">
     <div class="modal-content">
-        <h3>Project Gepubliceerd!</h3>
-        <p>Kopieer de link hieronder:</p>
-        <input type="text" id="share-url" readonly onclick="this.select()">
-        <br><br>
+        <h3 id="modal-status">Project Gepubliceerd!</h3>
+        <p>Live Website Link:</p>
+        <input type="text" id="share-url" readonly style="width:100%" onclick="this.select()">
+        <p style="font-size: 12px; color: #aaa;">Kopieer deze link en stuur hem naar je vrienden!</p>
         <button class="btn-blue" onclick="document.getElementById('share-modal').style.display='none'">Sluiten</button>
     </div>
 </div>
@@ -72,104 +93,9 @@
     let editor;
     let huidigProjectID = null;
 
-    // 1. HOME SCHERM FUNCTIES
-    async function laadProjecten() {
-        const { data: { user } } = await sb.auth.getUser();
-        if (!user) return; // Je moet ingelogd zijn (voeg evt login flow toe)
-
-        const { data } = await sb.from('projecten').select('*').order('created_at', { ascending: false });
-        const lijst = document.getElementById('project-lijst');
-        lijst.innerHTML = '';
-        
-        data.forEach(p => {
-            const card = document.createElement('div');
-            card.className = 'project-card';
-            card.innerHTML = `<h3>Project</h3><small>${new Date(p.created_at).toLocaleDateString()}</small>`;
-            card.onclick = () => openProject(p);
-            lijst.appendChild(card);
-        });
-    }
-
-    function nieuwProject() {
-        huidigProjectID = null;
-        if(editor) editor.setValue("<h1>Nieuwe Website</h1>\n<p>Typ hier...</p>");
-        toonEditor();
-    }
-
-    function openProject(p) {
-        huidigProjectID = p.id;
-        toonEditor();
-        if(editor) editor.setValue(p.html_code);
-    }
-
-    function toonEditor() {
-        document.getElementById('home-screen').style.display = 'none';
-        document.getElementById('editor-nav').style.display = 'flex';
-        document.getElementById('main').style.display = 'flex';
-    }
-
-    function gaNaarHome() {
-        document.getElementById('home-screen').style.display = 'block';
-        document.getElementById('editor-nav').style.display = 'none';
-        document.getElementById('main').style.display = 'none';
-        laadProjecten();
-    }
-
-    // 2. EDITOR INITIALISATIE
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
-    require(['vs/editor/editor.main'], function() {
-        editor = monaco.editor.create(document.getElementById('editor'), {
-            value: "<h1>Hallo!</h1>",
-            language: 'html',
-            theme: 'vs-dark',
-            automaticLayout: true
-        });
-        editor.onDidChangeModelContent(() => {
-            document.getElementById('preview').srcdoc = editor.getValue();
-        });
-    });
-
-    // 3. OPSLAAN & DELEN
-    async function saveProject() {
-        const { data: { user } } = await sb.auth.getUser();
-        const code = editor.getValue();
-
-        let res;
-        if (huidigProjectID) {
-            res = await sb.from('projecten').update({ html_code: code }).eq('id', huidigProjectID).select();
-        } else {
-            res = await sb.from('projecten').insert([{ html_code: code, user_id: user.id }]).select();
-        }
-
-        if (res.error) alert("Fout: " + res.error.message);
-        else {
-            huidigProjectID = res.data[0].id;
-            const link = window.location.origin + window.location.pathname + "?id=" + huidigProjectID;
-            document.getElementById('share-url').value = link;
-            document.getElementById('share-modal').style.display = 'flex';
-        }
-    }
-
-    function vraagAI() {
-        const code = editor.getValue();
-        if(!code.includes('<style>')) alert("AI Tip: Je website is nogal wit. Voeg een <style> tag toe voor wat kleur!");
-        else if(!code.includes('button')) alert("AI Tip: Voeg een <button> toe om je site interactief te maken!");
-        else alert("AI Tip: Ziet er goed uit! Probeer een Google Font toe te voegen voor een modernere look.");
-    }
-
-    // Start
-    window.onload = async () => {
-        const params = new URLSearchParams(window.location.search);
-        if(params.get('id')) {
-            // Als er een ID is, laad direct (voor bezoekers)
-            const { data } = await sb.from('projecten').select('html_code').eq('id', params.get('id')).single();
-            if(data) {
-                document.body.innerHTML = data.html_code; // Toon ECHTE website aan bezoekers
-                return;
-            }
-        }
-        laadProjecten();
-    };
-</script>
-</body>
-</html>
+    // --- AUTH FUNCTIES ---
+    async function signUp() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const { error } = await sb.auth.signUp({ email, password });
+        if (error) alert(error.message);
