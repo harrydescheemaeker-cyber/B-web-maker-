@@ -17,6 +17,7 @@
         .btn-save { background: #27ae60; color: white; }
         #auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
         .auth-form { background: #222; padding: 30px; border-radius: 8px; text-align: center; }
+        input { padding: 10px; margin: 5px; width: 200px; border-radius: 4px; border: none; }
     </style>
 </head>
 <body>
@@ -24,18 +25,18 @@
 <div id="auth-overlay">
     <div class="auth-form">
         <h2>Inloggen bij Code Studio</h2>
-        <input type="email" id="email" placeholder="E-mail"><br><br>
-        <input type="password" id="password" placeholder="Wachtwoord"><br><br>
+        <input type="email" id="email" placeholder="E-mail (bijv: test@test.nl)"><br>
+        <input type="password" id="password" placeholder="Wachtwoord (min. 6 tekens)"><br><br>
         <button onclick="signUp()">Account maken</button>
         <button onclick="signIn()">Inloggen</button>
     </div>
 </div>
 
 <nav>
-    <div><strong>AI Code Studio</strong> | Project: <span id="cur-name">Nieuw</span></div>
+    <div><strong>AI Code Studio</strong> | <span id="cur-name">Nieuw Project</span></div>
     <div>
-        <button class="btn-ai" onclick="vraagGemini()">✨ Gemini AI</button>
-        <button class="btn-save" onclick="saveProject()">Opslaan & Deel</button>
+        <button class="btn-ai" onclick="vraagGemini()">✨ AI Hulp</button>
+        <button class="btn-save" onclick="saveProject()">Opslaan</button>
     </div>
 </nav>
 
@@ -45,24 +46,24 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
+
 <script>
-   <script>
-    // Jouw gegevens zijn hier nu correct ingevuld
+    // Configureren van de verbinding
     const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
     
-    // We noemen de verbinding 'sb', dan raakt de computer niet in de war
+    // De verbinding tot stand brengen
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editor;
 
-    // 1. Authenticatie Functies
+    // Functies voor inloggen
     async function signUp() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const { error } = await sb.auth.signUp({ email, password });
         if (error) alert("Fout: " + error.message); 
-        else alert("Account aangemaakt! Je kunt nu inloggen.");
+        else alert("Account aangemaakt! Klik nu op 'Inloggen'.");
     }
 
     async function signIn() {
@@ -70,42 +71,36 @@
         const password = document.getElementById('password').value;
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) alert("Inloggen mislukt: " + error.message); 
-        else document.getElementById('auth-overlay').style.display = 'none';
+        else {
+            alert("Welkom!");
+            document.getElementById('auth-overlay').style.display = 'none';
+        }
     }
 
-    // 2. De Editor Laden
+    // De VS Code Editor laden
     require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
     require(['vs/editor/editor.main'], function() {
         editor = monaco.editor.create(document.getElementById('editor'), {
-            value: "<h1>Hallo Wereld</h1>\n<p>Begin hier met typen...</p>",
+            value: "<h1>Hallo Wereld!</h1>\n<p>Begin hier met bouwen...</p>",
             language: 'html',
             theme: 'vs-dark',
             automaticLayout: true
         });
 
-        editor.onDidChangeModelContent(() => updatePreview());
-        updatePreview();
+        editor.onDidChangeModelContent(() => {
+            const code = editor.getValue();
+            document.getElementById('preview').srcdoc = code;
+        });
+        document.getElementById('preview').srcdoc = editor.getValue();
     });
 
-    function updatePreview() {
-        const code = editor.getValue();
-        const frame = document.getElementById('preview');
-        frame.srcdoc = code;
-    }
-
-    // 3. Opslaan
     async function saveProject() {
-        const { data: { user } } = await sb.auth.getUser();
-        if(!user) return alert("Log eerst in!");
-
-        const { error } = await sb.from('projecten').insert([
-            { naam: 'Mijn Project', html_code: editor.getValue(), user_id: user.id }
-        ]);
-        if (error) alert("Opslaan mislukt: " + error.message); 
-        else alert("Project succesvol opgeslagen in de database!");
+        alert("Opslaan functie wordt aangeroepen!");
     }
 
     function vraagGemini() {
-        alert("Gemini is klaar voor actie! Voeg nu je Gemini API key toe om tips te krijgen.");
+        alert("Gemini: 'Je bent goed bezig! Voeg een <style> tag toe om je tekst kleur te geven.'");
     }
 </script>
+</body>
+</html>
