@@ -46,10 +46,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
 <script>
-    // VERVANG DEZE MET JOUW SUPABASE GEGEVENS
+   <script>
+    // Jouw gegevens zijn hier nu correct ingevuld
     const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
-   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // We noemen de verbinding 'sb', dan raakt de computer niet in de war
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editor;
 
@@ -57,26 +60,27 @@
     async function signUp() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) alert(error.message); else alert("Check je mail voor verificatie!");
+        const { error } = await sb.auth.signUp({ email, password });
+        if (error) alert("Fout: " + error.message); 
+        else alert("Account aangemaakt! Je kunt nu inloggen.");
     }
 
     async function signIn() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) alert(error.message); else document.getElementById('auth-overlay').style.display = 'none';
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) alert("Inloggen mislukt: " + error.message); 
+        else document.getElementById('auth-overlay').style.display = 'none';
     }
 
-    // 2. De Editor Laden (VS Code motor)
+    // 2. De Editor Laden
     require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
     require(['vs/editor/editor.main'], function() {
         editor = monaco.editor.create(document.getElementById('editor'), {
             value: "<h1>Hallo Wereld</h1>\n<p>Begin hier met typen...</p>",
             language: 'html',
             theme: 'vs-dark',
-            automaticLayout: true,
-            suggestOnTriggerCharacters: true // Voor de h1 tips
+            automaticLayout: true
         });
 
         editor.onDidChangeModelContent(() => updatePreview());
@@ -89,22 +93,19 @@
         frame.srcdoc = code;
     }
 
-    // 3. Opslaan & AI
+    // 3. Opslaan
     async function saveProject() {
-        const user = (await supabase.auth.getUser()).data.user;
+        const { data: { user } } = await sb.auth.getUser();
         if(!user) return alert("Log eerst in!");
 
-        const { data, error } = await supabase.from('projecten').insert([
+        const { error } = await sb.from('projecten').insert([
             { naam: 'Mijn Project', html_code: editor.getValue(), user_id: user.id }
         ]);
-        if (error) alert("Fout: " + error.message); else alert("Project opgeslagen! Deel de URL van deze site met je vrienden.");
+        if (error) alert("Opslaan mislukt: " + error.message); 
+        else alert("Project succesvol opgeslagen in de database!");
     }
 
     function vraagGemini() {
-        const code = editor.getValue();
-        alert("Gemini tip: Gebruik <style> tags bovenin om je tekst kleur te geven!");
-        // Hier kun je later de Gemini API Key koppelen
+        alert("Gemini is klaar voor actie! Voeg nu je Gemini API key toe om tips te krijgen.");
     }
 </script>
-</body>
-</html>
