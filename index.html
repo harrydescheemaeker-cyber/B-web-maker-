@@ -6,37 +6,39 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/editor/editor.main.css">
     <style>
-        body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: white; }
-        nav { background: #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-        #main { display: flex; flex: 1; }
-        #editor { width: 50%; height: 100%; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: white; overflow: hidden; }
+        nav { background: #2d2d2d; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; }
+        #main { display: flex; flex: 1; overflow: hidden; }
+        #editor { width: 50%; height: 100%; border-right: 1px solid #444; }
         #preview-box { width: 50%; background: white; }
         iframe { width: 100%; height: 100%; border: none; }
-        button { cursor: pointer; padding: 8px 15px; border: none; border-radius: 4px; margin-left: 5px; }
-        .btn-ai { background: #8e44ad; color: white; }
+        button { cursor: pointer; padding: 8px 16px; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        .btn-ai { background: #8e44ad; color: white; margin-right: 10px; }
         .btn-save { background: #27ae60; color: white; }
+        button:hover { opacity: 0.8; }
         #auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .auth-form { background: #222; padding: 30px; border-radius: 8px; text-align: center; }
-        input { padding: 10px; margin: 5px; width: 200px; border-radius: 4px; border: none; }
+        .auth-form { background: #252526; padding: 40px; border-radius: 12px; text-align: center; border: 1px solid #444; }
+        input { padding: 12px; margin: 8px; width: 250px; border-radius: 4px; border: 1px solid #444; background: #3c3c3c; color: white; }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
     <div class="auth-form">
-        <h2>Inloggen bij Code Studio</h2>
-        <input type="email" id="email" placeholder="E-mail (bijv: test@test.nl)"><br>
+        <h2>Welkom bij Code Studio</h2>
+        <p>Maak een gratis account om je code op te slaan.</p>
+        <input type="email" id="email" placeholder="E-mail"><br>
         <input type="password" id="password" placeholder="Wachtwoord (min. 6 tekens)"><br><br>
-        <button onclick="signUp()">Account maken</button>
-        <button onclick="signIn()">Inloggen</button>
+        <button onclick="signUp()" style="background: #444; color: white;">Account maken</button>
+        <button onclick="signIn()" style="background: #007acc; color: white;">Inloggen</button>
     </div>
 </div>
 
 <nav>
-    <div><strong>AI Code Studio</strong> | <span id="cur-name">Nieuw Project</span></div>
+    <div><strong>🚀 AI Code Studio</strong> | <span id="cur-name">Nieuw Project</span></div>
     <div>
-        <button class="btn-ai" onclick="vraagGemini()">✨ AI Hulp</button>
-        <button class="btn-save" onclick="saveProject()">Opslaan</button>
+        <button class="btn-ai" onclick="vraagGemini()">✨ AI Tip</button>
+        <button class="btn-save" onclick="saveProject()">Opslaan & Deel</button>
     </div>
 </nav>
 
@@ -48,59 +50,22 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
 
 <script>
-    // Configureren van de verbinding
+    // 1. SUPABASE CONFIGURATIE
     const SUPABASE_URL = 'https://vqgimwgmhoxifzmsunxp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxZ2ltd2dtaG94aWZ6bXN1bnhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODUzOTUsImV4cCI6MjA4NTM2MTM5NX0.rAcHlXDoVPmyw5LI3b7VeuDYQzFldZ5CA4_pBq1CO6c';
-    
-    // De verbinding tot stand brengen
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let editor;
 
-    // Functies voor inloggen
+    // 2. AUTHENTICATIE
     async function signUp() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const { error } = await sb.auth.signUp({ email, password });
         if (error) alert("Fout: " + error.message); 
-        else alert("Account aangemaakt! Klik nu op 'Inloggen'.");
+        else alert("Account aangemaakt! Je kunt nu direct inloggen.");
     }
 
     async function signIn() {
         const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const { data, error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) alert("Inloggen mislukt: " + error.message); 
-        else {
-            alert("Welkom!");
-            document.getElementById('auth-overlay').style.display = 'none';
-        }
-    }
-
-    // De VS Code Editor laden
-    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs' }});
-    require(['vs/editor/editor.main'], function() {
-        editor = monaco.editor.create(document.getElementById('editor'), {
-            value: "<h1>Hallo Wereld!</h1>\n<p>Begin hier met bouwen...</p>",
-            language: 'html',
-            theme: 'vs-dark',
-            automaticLayout: true
-        });
-
-        editor.onDidChangeModelContent(() => {
-            const code = editor.getValue();
-            document.getElementById('preview').srcdoc = code;
-        });
-        document.getElementById('preview').srcdoc = editor.getValue();
-    });
-
-    async function saveProject() {
-        alert("Opslaan functie wordt aangeroepen!");
-    }
-
-    function vraagGemini() {
-        alert("Gemini: 'Je bent goed bezig! Voeg een <style> tag toe om je tekst kleur te geven.'");
-    }
-</script>
-</body>
-</html>
+        const password = document.getElementById('password
